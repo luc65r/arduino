@@ -21,28 +21,37 @@ pub fn build(b: *Builder) !void {
 
     const link = b.addSystemCommand(&[_][]const u8{
         "avr-ld",
-        "-o", elf_file,
+        "-o",
+        elf_file,
         object_file,
     });
     link.step.dependOn(&build_obj.step);
 
     const strip = b.addSystemCommand(&[_][]const u8{
         "avr-objcopy",
-        "-j", ".text",
-        "-j", ".data",
-        "-O", "ihex",
+        "-j",
+        ".text",
+        "-j",
+        ".data",
+        "-O",
+        "ihex",
         elf_file,
         hex_file,
     });
     strip.step.dependOn(&link.step);
 
     const upload = b.addSystemCommand(&[_][]const u8{
+        "sudo",
         "avrdude",
-        "-p", "atmega328p",
-        "-c", "arduino",
-        "-P", device_path,
+        "-p",
+        "atmega328p",
+        "-c",
+        "arduino",
+        "-P",
+        device_path,
         "-D",
-        "-U", "flash:w:" ++ hex_file ++ ":i",
+        "-U",
+        "flash:w:" ++ hex_file ++ ":i",
     });
     upload.step.dependOn(&strip.step);
 
