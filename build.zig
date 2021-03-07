@@ -18,6 +18,8 @@ pub fn build(b: *Builder) !void {
     build_obj.setTarget(target);
     build_obj.setBuildMode(mode);
     build_obj.setOutputDir(".");
+    build_obj.strip = true;
+    build_obj.single_threaded = true;
 
     const link = b.addSystemCommand(&[_][]const u8{
         "avr-ld",
