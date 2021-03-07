@@ -20,6 +20,8 @@
           }))
           avrdude
           pkgsCross.avr.buildPackages.binutils
+          pkgsCross.avr.buildPackages.gdb
+          pkgsCross.avr.buildPackages.gcc
           (callPackage ./simulavr.nix {})
         ];
       };
