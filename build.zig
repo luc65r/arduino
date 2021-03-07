@@ -61,5 +61,28 @@ pub fn build(b: *Builder) !void {
     const upload_step = b.step("upload", "Upload to Arduino");
     upload_step.dependOn(&upload.step);
 
+    const setup_tty = b.addSystemCommand(&[_][]const u8{
+        "sudo",
+        "stty",
+        "-F",
+        device_path,
+        "9600",
+        "raw",
+        "-clocal",
+        "-echo",
+        "icrnl",
+    });
+    setup_tty.step.dependOn(&upload.step);
+
+    const watch_serial = b.addSystemCommand(&[_][]const u8{
+        "sudo",
+        "cat",
+        device_path,
+    });
+    watch_serial.step.dependOn(&setup_tty.step);
+
+    const serial_step = b.step("serial", "Watch serial output");
+    serial_step.dependOn(&watch_serial.step);
+
     b.default_step.dependOn(&strip.step);
 }
