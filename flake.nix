@@ -9,7 +9,15 @@
     in {
       devShell = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          zig
+          (zig.overrideAttrs (old: {
+            version = "git";
+            src = fetchFromGitHub {
+              owner = "ziglang";
+              repo = "zig";
+              rev = "0447a2c041a4be843251396e668e074186aa49a2";
+              sha256 = "+FIMlrGqlj2K6HZk9+QiT0oFsfqaTRCF2XTrfu+Yskg=";
+            };
+          }))
           avrdude
           pkgsCross.avr.buildPackages.binutils
         ];
