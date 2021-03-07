@@ -22,7 +22,8 @@ pub fn build(b: *Builder) !void {
     build_obj.single_threaded = true;
 
     const link = b.addSystemCommand(&[_][]const u8{
-        "avr-ld",
+        "avr-gcc",
+        "-mmcu=atmega328p",
         "-o",
         elf_file,
         object_file,
