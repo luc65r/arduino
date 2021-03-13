@@ -3,10 +3,6 @@ const Builder = std.build.Builder;
 
 const device_path = "/dev/ttyACM0";
 
-const object_file = "main.o";
-const elf_file = "main.elf";
-const hex_file = "main.hex";
-
 pub fn build(b: *Builder) !void {
     const target = try std.zig.CrossTarget.parse(.{
         .arch_os_abi = "avr-freestanding-none",
@@ -14,34 +10,34 @@ pub fn build(b: *Builder) !void {
     });
     const mode = .ReleaseSmall;
 
-    const build_obj = b.addObject("main", "src/main.zig");
-    build_obj.setTarget(target);
-    build_obj.setBuildMode(mode);
-    build_obj.setOutputDir(".");
-    build_obj.strip = true;
-    build_obj.single_threaded = true;
+    const libgcc = b.addObject("libgcc", null);
+    libgcc.addCSourceFile("src/libgcc.S", &[_][]const u8{"-mmcu=avr5"});
+    libgcc.setTarget(target);
+    libgcc.setBuildMode(mode);
+    libgcc.strip = true;
 
-    const link = b.addSystemCommand(&[_][]const u8{
-        "avr-gcc",
-        "-mmcu=atmega328p",
-        "-o",
-        elf_file,
-        object_file,
-    });
-    link.step.dependOn(&build_obj.step);
+    const exe = b.addExecutable("main", "src/start.zig");
+    exe.setTarget(target);
+    exe.setBuildMode(mode);
+    exe.setOutputDir(".");
+    exe.strip = true;
+    exe.single_threaded = true;
+    exe.bundle_compiler_rt = false;
+    exe.setLinkerScriptPath("src/linker.ld");
+    exe.addObject(libgcc);
+    exe.install();
 
-    const strip = b.addSystemCommand(&[_][]const u8{
-        "avr-objcopy",
-        "-j",
-        ".text",
-        "-j",
-        ".data",
-        "-O",
-        "ihex",
-        elf_file,
-        hex_file,
+    const bin_path = b.getInstallPath(exe.install_step.?.dest_dir, exe.out_filename);
+
+    const objdump = b.addSystemCommand(&[_][]const u8{
+        "avr-objdump",
+        "-D",
+        bin_path,
     });
-    strip.step.dependOn(&link.step);
+    objdump.step.dependOn(&exe.install_step.?.step);
+
+    const objdump_step = b.step("objdump", "Show disassembly of the code");
+    objdump_step.dependOn(&objdump.step);
 
     const upload = b.addSystemCommand(&[_][]const u8{
         "sudo",
@@ -54,9 +50,13 @@ pub fn build(b: *Builder) !void {
         device_path,
         "-D",
         "-U",
-        "flash:w:" ++ hex_file ++ ":i",
+        try std.mem.concat(b.allocator, u8, &[_][]const u8{
+            "flash:w:",
+            bin_path,
+            ":e",
+        }),
     });
-    upload.step.dependOn(&strip.step);
+    upload.step.dependOn(&exe.install_step.?.step);
 
     const upload_step = b.step("upload", "Upload to Arduino");
     upload_step.dependOn(&upload.step);
@@ -84,5 +84,5 @@ pub fn build(b: *Builder) !void {
     const serial_step = b.step("serial", "Watch serial output");
     serial_step.dependOn(&watch_serial.step);
 
-    b.default_step.dependOn(&strip.step);
+    b.default_step.dependOn(&exe.step);
 }
